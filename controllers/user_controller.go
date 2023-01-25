@@ -61,15 +61,28 @@ func CreateAccount() http.HandlerFunc {
 		}
 
 		newUser := models.User{
-			//ID generates another primtive objectID
-			//ID:         primitive.NewObjectID(),
 			Name:       strings.ToLower(user.Name),
 			Age:        user.Age,
 			Profession: user.Profession,
 			Location:   user.Location,
 		}
 
-		//newUser.Name = strings.ToLower(newUser.Name)
+		/*Check if Username has already been used in the database
+		if it has, then return the message "Document already exists*/
+
+		filter := bson.D{{Key: "Name", Value: newUser.Name}}
+		var result2 models.User
+		err := userCollection.FindOne(context.Background(), filter).Decode(&result2)
+		if err == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			response := responses.UserResponse{
+				Status:  http.StatusBadRequest,
+				Message: "Document already exists",
+			}
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
 		result, err := userCollection.InsertOne(context.Background(), newUser)
 
 		if err != nil {
@@ -79,7 +92,7 @@ func CreateAccount() http.HandlerFunc {
 				Status:  http.StatusInternalServerError,
 				Message: "error",
 				Data: map[string]interface{}{
-					"data": result,
+					"data": err.Error(),
 				},
 			}
 			json.NewEncoder(w).Encode(response)
